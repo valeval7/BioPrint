@@ -11,11 +11,14 @@ use App\Models\TrabajoImpresion;
 use App\Models\RegistroAuditoria;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
   /** @use HasFactory<\Database\Factories\UserFactory> */
   use HasFactory, Notifiable;
+  use HasApiTokens;
+
 
   /**
    * The attributes that are mass assignable.

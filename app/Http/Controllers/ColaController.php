@@ -1,65 +1,59 @@
 <?php
-
 namespace App\Http\Controllers;
 
+use App\Models\TrabajoImpresion;
+use App\Models\NivelAcceso;
+use App\Models\RegistroAuditoria;
 use Illuminate\Http\Request;
-use App\Models\Trabajo;
 
 class ColaController extends Controller
 {
-    /**
-     * Mostrar la cola
-     */
     public function index()
     {
-        // Si es admin ve todo, si no solo lo suyo
-        if (auth()->user()->nivel_acceso_id === \App\Models\NivelAcceso::PREMIUM) {
-            $trabajos = Trabajo::with('usuario')
-                ->orderBy('creado_en', 'asc')
-                ->get();
+        $user = auth()->user();
+
+        if ($user->nivel_acceso_id === NivelAcceso::PREMIUM) {
+            $trabajos        = TrabajoImpresion::with('usuario')
+                                               ->orderByDesc('creado_en')
+                                               ->get();
+            $totalPendientes = TrabajoImpresion::where('estado', 'pendiente')->count();
+            $totalHoy        = TrabajoImpresion::where('estado', 'liberado')
+                                               ->whereDate('liberado_en', today())
+                                               ->count();
         } else {
-            $trabajos = Trabajo::where('usuario_id', auth()->id())
-                ->orderBy('creado_en', 'asc')
-                ->get();
+            $trabajos        = TrabajoImpresion::delUsuario($user->id)
+                                               ->orderByDesc('creado_en')
+                                               ->get();
+            $totalPendientes = 0;
+            $totalHoy        = 0;
         }
 
-        $totalPendientes = Trabajo::where('estado', 'pendiente')->count();
-        $totalHoy = Trabajo::whereDate('creado_en', now())->count();
-
-        return view('cola.index', compact('trabajos', 'totalPendientes', 'totalHoy'));
+        return view('dashboard.index', compact('trabajos', 'totalPendientes', 'totalHoy'));
     }
 
-    /**
-     * Liberar un trabajo (AQUÍ se ejecuta Python)
-     */
-    public function liberar($id)
+    public function liberar(TrabajoImpresion $trabajo)
     {
-        $trabajo = Trabajo::findOrFail($id);
+        $user = auth()->user();
 
-        // Cambiar estado
-        $trabajo->estado = 'liberado';
-        $trabajo->save();
-
-        // Ejecutar script Python
-        try {
-            exec("python3 /opt/bioprint/agente.py > /dev/null 2>&1 &");
-        } catch (\Exception $e) {
-            \Log::error("Error ejecutando Python: " . $e->getMessage());
+        if ($trabajo->usuario_id !== $user->id && $user->nivel_acceso_id !== NivelAcceso::PREMIUM) {
+            return back()->with('error', 'No tienes permiso para liberar este trabajo.');
         }
 
-        return redirect()->back()->with('success', 'Trabajo liberado correctamente');
-    }
+        $trabajo->update([
+            'estado'      => TrabajoImpresion::LIBERADO,
+            'liberado_en' => now(),
+        ]);
 
-    /**
-     * Cancelar trabajo (opcional)
-     */
-    public function cancelar($id)
-    {
-        $trabajo = Trabajo::findOrFail($id);
+        RegistroAuditoria::registrar(
+            RegistroAuditoria::TRABAJO_LIBERADO,
+            $user->id,
+            $trabajo->id,
+            ['modo' => $trabajo->modo_impresion, 'paginas' => $trabajo->paginas]
+        );
 
-        $trabajo->estado = 'cancelado';
-        $trabajo->save();
+        // Lanzar el agente de impresión en background tras actualizar la BD
+        exec('python3 /opt/bioprint/agente.py > /dev/null 2>&1 &');
 
-        return redirect()->back()->with('success', 'Trabajo cancelado');
+        return back()->with('success', "Trabajo \"{$trabajo->nombre_trabajo}\" liberado correctamente.");
     }
 }

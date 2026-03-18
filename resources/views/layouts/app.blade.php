@@ -25,6 +25,11 @@
 
             {{-- Nav links --}}
             <div class="flex items-center gap-6">
+                <a href="{{ route('trabajos.create') }}"
+                   class="text-slate-300 hover:text-blue-400 transition text-sm font-medium">
+                    Subir Archivos
+                </a>
+
                 <a href="{{ route('dashboard') }}"
                    class="text-slate-300 hover:text-blue-400 transition text-sm font-medium">
                     Cola de Impresión
@@ -40,6 +45,7 @@
                         Auditoría
                     </a>
                 @endif
+
 
                 {{-- Separador --}}
                 <div class="w-px h-5 bg-slate-600"></div>

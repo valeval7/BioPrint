@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ColaController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\AuditoriaController;
+use App\Http\Controllers\TrabajoImpresionController;
 
 // Raíz
 Route::get('/', function () {
@@ -50,3 +51,6 @@ Route::middleware(['auth', 'solo.admin'])->group(function () {
     Route::patch('usuarios/{usuario}/toggle', [UsuarioController::class, 'toggle'])->name('usuarios.toggle');
     Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
 });
+
+Route::get('/subir-archivo', [TrabajoImpresionController::class, 'create'])->name('trabajos.create');
+Route::post('/subir-archivo', [TrabajoImpresionController::class, 'store'])->name('trabajos.store');

@@ -23,9 +23,27 @@
                 </div>
             </div>
 
-
             {{-- Nav links --}}
             <div class="flex items-center gap-6">
+                <a href="{{ route('dashboard') }}"
+                   class="text-slate-300 hover:text-blue-400 transition text-sm font-medium">
+                    Cola de Impresión
+                </a>
+
+                @if(auth()->user()->nivel_acceso_id === \App\Models\NivelAcceso::PREMIUM)
+                    <a href="{{ route('usuarios.index') }}"
+                       class="text-slate-300 hover:text-blue-400 transition text-sm font-medium">
+                        Usuarios
+                    </a>
+                    <a href="{{ route('auditoria.index') }}"
+                       class="text-slate-300 hover:text-blue-400 transition text-sm font-medium">
+                        Auditoría
+                    </a>
+                @endif
+
+                {{-- Separador --}}
+                <div class="w-px h-5 bg-slate-600"></div>
+
                 {{-- Badge nivel --}}
                 @php $nivel = auth()->user()->nivel_acceso_id; @endphp
                 <span class="text-xs font-bold px-2 py-1 rounded-full

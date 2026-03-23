@@ -56,3 +56,5 @@ Route::middleware('auth')->group(function () {
     Route::post('/subir-archivo', [TrabajoImpresionController::class, 'store'])->name('trabajos.store');
     Route::get('/trabajos/{trabajo}/descargar', [TrabajoImpresionController::class, 'descargar'])->name('trabajos.descargar');
 });
+
+ Route::patch('/trabajos/{trabajo}/resultado', [ColaController::class, 'resultado'])->name('trabajos.resultado');

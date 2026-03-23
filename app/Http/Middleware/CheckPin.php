@@ -10,11 +10,9 @@ class CheckPin
 {
 public function handle(Request $request, Closure $next)
 {
-    if (!$request->session()->has('pin_verified')) {
+    if (!$request->session()->has('pin_confirmed')) {
         return redirect()->route('pin.show', ['url' => $request->fullUrl()]);
     }
-
-    $request->session()->forget('pin_verified');
 
     return $next($request);
 }

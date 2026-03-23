@@ -35,8 +35,7 @@ class TrabajoLiberado implements ShouldBroadcast
         return [
             'trabajo_id'     => $this->trabajo->id,
             'nombre_trabajo' => $this->trabajo->nombre_trabajo,
-            'modo_impresion' => $this->trabajo->modo_impresion,
-            'ruta_archivo'   => storage_path('app/' . $this->trabajo->ruta_archivo_cifrado),
+'ruta_archivo'   => \Illuminate\Support\Facades\Storage::disk('local')->path($this->trabajo->ruta_archivo_cifrado),
             'modelo_facial'  => $this->trabajo->usuario->ruta_modelo_facial ?? null,
             'usuario_nombre' => $this->trabajo->usuario->name ?? 'Desconocido',
         ];

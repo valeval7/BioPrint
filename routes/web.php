@@ -5,6 +5,8 @@ use App\Http\Controllers\ColaController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\TrabajoImpresionController;
+use App\Http\Controllers\PinController;
+
 
 // Raíz
 Route::get('/', function () {
@@ -45,10 +47,15 @@ Route::middleware('auth')->group(function () {
 });
 
 // Solo admin
-Route::middleware(['auth', 'solo.admin'])->group(function () {
+Route::middleware(['auth', 'solo.admin', 'CheckPin'])->group(function () {
     Route::resource('usuarios', UsuarioController::class);
     Route::patch('usuarios/{usuario}/toggle', [UsuarioController::class, 'toggle'])->name('usuarios.toggle');
     Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/confirmar-pin', [PinController::class, 'show'])->name('pin.show');
+    Route::post('/confirmar-pin', [PinController::class, 'verify'])->name('pin.verify');
 });
 
 Route::middleware('auth')->group(function () {

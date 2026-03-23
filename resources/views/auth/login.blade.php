@@ -74,9 +74,6 @@
             </div>
         </div>
 
-        <p class="text-center text-slate-600 text-xs mt-6">
-            BioPrint-Secure · Ubuntu 24.04 LTS · Tecnologías Emergentes
-        </p>
     </div>
 </body>
 </html>

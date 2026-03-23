@@ -17,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'solo.admin' => \App\Http\Middleware\SoloAdmin::class,
         ]);
     })
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->alias([
+            'CheckPin' => \App\Http\Middleware\CheckPin::class,
+        ]);
+    })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();

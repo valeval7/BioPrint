@@ -15,7 +15,12 @@ class EventServiceProvider extends ServiceProvider
   ];
 
   public function boot(): void
-  {
-    //
-  }
+{
+    \Illuminate\Support\Facades\URL::forceScheme('https');
+    \Illuminate\Support\Facades\Request::setTrustedProxies(
+        ['*'],
+        \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
+        \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO
+    );
+}
 }

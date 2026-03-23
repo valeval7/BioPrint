@@ -7,109 +7,104 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Models\NivelAcceso;
+use App\Models\TrabajoImpresion;
 
 class TrabajoImpresionController extends Controller
 {
-    /**
-     * Tipos de archivo aceptados para impresión.
-     * Extensiones + MIME types válidos.
-     */
-    private array $tiposAceptados = [
-        'pdf'  => 'application/pdf',
-        'jpg'  => 'image/jpeg',
-        'jpeg' => 'image/jpeg',
-        'png'  => 'image/png',
-        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'odt'  => 'application/vnd.oasis.opendocument.text',
-        'txt'  => 'text/plain',
-        'ps'   => 'application/postscript',
+    private array $extensionesValidas = ['pdf', 'jpg', 'jpeg', 'png', 'docx', 'odt', 'txt', 'ps'];
+
+    private array $mimesValidos = [
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.oasis.opendocument.text',
+        'text/plain',
+        'application/postscript',
     ];
 
-    /**
-     * Mostrar el formulario de subida.
-     * Solo usa trabajo_impresions — sin consultas a otras tablas.
-     */
     public function create()
     {
-        return view('trabajos.create', [
-            'extensionesAceptadas' => implode(',', array_map(
-                fn($e) => '.' . $e,
-                array_keys($this->tiposAceptados)
-            )),
-        ]);
+        return view('trabajos.create');
     }
 
-   
     public function store(Request $request)
     {
-        // --- Validación ---
-        $extensiones = implode(',', array_keys($this->tiposAceptados));
+        $nivelId = Auth::user()->nivel_acceso_id;
+        $requiereModo = in_array($nivelId, [NivelAcceso::PREMIUM, NivelAcceso::ESTANDAR]);
 
-        $request->validate([
+        // --- Validación ---
+        $rules = [
+            'nombre_trabajo' => ['required', 'string', 'max:255'],
             'archivo'        => [
                 'required',
                 'file',
-                'max:51200',          // 50 MB
-                'mimes:' . $extensiones,
+                'max:51200',
+                'mimes:' . implode(',', $this->extensionesValidas),
             ],
-            'nombre_trabajo'  => ['required', 'string', 'max:255'],
-            'cups_trabajo_id' => ['required', 'integer', 'min:1'],  // entero simple, sin FK check
-            'modo_impresion'  => ['required', 'in:bn,color'],
-        ], [
-            'archivo.mimes'           => 'Solo se aceptan: PDF, JPG, PNG, DOCX, ODT, TXT, PS.',
-            'archivo.max'             => 'El archivo no debe superar 50 MB.',
-            'cups_trabajo_id.required'=> 'Indica el ID de impresora.',
+        ];
+
+        if ($requiereModo) {
+            $rules['modo_impresion'] = ['required', 'in:bn,color'];
+        }
+
+        $request->validate($rules, [
+            'archivo.mimes' => 'Solo se aceptan: PDF, JPG, PNG, DOCX, ODT, TXT, PS.',
+            'archivo.max'   => 'El archivo no debe superar 50 MB.',
         ]);
 
-        // --- Validación extra: MIME real (no solo extensión) ---
-        $archivo      = $request->file('archivo');
-        $mimeReal     = $archivo->getMimeType();
-        $mimesValidos = array_unique(array_values($this->tiposAceptados));
+        // --- Validar MIME real ---
+        $archivo  = $request->file('archivo');
+        $mimeReal = $archivo->getMimeType();
 
-        if (!in_array($mimeReal, $mimesValidos)) {
+        if (!in_array($mimeReal, $this->mimesValidos)) {
             return back()
                 ->withErrors(['archivo' => 'El tipo de archivo no es válido para impresión.'])
                 ->withInput();
         }
 
-        // --- Guardar archivo con nombre UUID (sin revelar extensión original) ---
-        $nombreCifrado = Str::uuid() . '.enc';
-        Storage::disk('local')->putFileAs('trabajos', $archivo, $nombreCifrado);
-        $rutaAbsoluta  = storage_path('app/trabajos/' . $nombreCifrado);
+        // --- Guardar archivo ---
+        $nombreArchivo = Str::uuid() . '.' . $archivo->getClientOriginalExtension();
+        $ruta = Storage::disk('local')->putFileAs('trabajos', $archivo, $nombreArchivo);
 
-        // --- Estimar páginas ---
-        $paginas = $this->estimarPaginas($archivo);
-
-        // --- INSERT solo en trabajo_impresions ---
+        // --- INSERT en BD ---
         DB::table('trabajo_impresions')->insert([
             'usuario_id'           => Auth::id(),
             'nombre_trabajo'       => $request->nombre_trabajo,
-            'cups_trabajo_id'      => (int) $request->cups_trabajo_id,
-            'ruta_archivo_cifrado' => $rutaAbsoluta,
-            'modo_impresion'       => $request->modo_impresion,
+            'ruta_archivo_cifrado' => $ruta,
+            'modo_impresion'       => $requiereModo ? $request->modo_impresion : 'bn',
             'estado'               => 'pendiente',
-            'paginas'              => $paginas,
+            'paginas'              => 1,
             'creado_en'            => now(),
         ]);
 
         return redirect()
             ->route('dashboard')
-            ->with('success', "Trabajo '{$request->nombre_trabajo}' agregado a la cola de impresion.");
+            ->with('success', "Trabajo '{$request->nombre_trabajo}' agregado a la cola de impresión.");
     }
 
-    /**
-     * Estimación de páginas.
-     * PDF: grep básico en Linux. Imágenes/otros: siempre 1.
-     */
-    private function estimarPaginas(\Illuminate\Http\UploadedFile $archivo): int
+    public function descargar(int $trabajo)
     {
-        if (strtolower($archivo->getClientOriginalExtension()) === 'pdf') {
-            $ruta    = $archivo->getRealPath();
-            $output  = shell_exec("grep -a '/Type /Page[^s]' \"$ruta\" | wc -l 2>/dev/null");
-            $paginas = (int) trim($output ?? '1');
-            return max(1, $paginas);
-        }
+        // Buscar el trabajo y verificar que pertenece al usuario autenticado
+        $registro = DB::table('trabajo_impresions')
+            ->where('id', $trabajo)
+            ->where('usuario_id', Auth::id())
+            ->first();
 
-        return 1;
+        // Si no existe o no le pertenece, 403
+        abort_if(!$registro, 403, 'No tienes permiso para descargar este archivo.');
+
+        $ruta = $registro->ruta_archivo_cifrado;
+
+        // Verificar que el archivo existe en disco
+        abort_unless(Storage::disk('local')->exists($ruta), 404, 'El archivo no se encontró en el servidor.');
+
+        // Reconstruir el nombre original limpio desde el nombre del trabajo
+        $extension  = pathinfo($ruta, PATHINFO_EXTENSION);
+        $nombreBase = Str::slug($registro->nombre_trabajo, '_');
+        $nombreDescarga = $nombreBase . '.' . $extension;
+
+        return Storage::disk('local')->download($ruta, $nombreDescarga);
     }
 }

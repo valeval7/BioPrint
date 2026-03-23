@@ -11,21 +11,24 @@ class NivelAccesoSeeder extends Seeder
   {
     DB::table('nivel_accesos')->insert([
       [
+        'id'=> 3,
         'nombre' => 'Administrador',
         'modo_impresion' => 'color',
-        'descripcion' => 'Acceso total al sistema',
+        'descripcion' => 'Acceso total al sistema.',
         'creado_en' => now()
       ],
       [
+        'id'=> 2,
         'nombre' => 'Usuario',
         'modo_impresion' => 'bn',
-        'descripcion' => 'Usuario normal del sistema',
+        'descripcion' => 'Usuario normal, impresión en color/blanco y negro.',
         'creado_en' => now()
       ],
       [
+        'id'=> 1,
         'nombre' => 'Invitado',
         'modo_impresion' => 'bn',
-        'descripcion' => 'Acceso limitado',
+        'descripcion' => 'Acceso limitado, impresión en blanco y negro.',
         'creado_en' => now()
       ]
     ]);

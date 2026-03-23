@@ -59,7 +59,6 @@
                     @if(auth()->user()->nivel_acceso_id === \App\Models\NivelAcceso::PREMIUM)
                         <th class="px-6 py-3 text-left">Usuario</th>
                     @endif
-                    <th class="px-6 py-3 text-center">Páginas</th>
                     <th class="px-6 py-3 text-center">Modo</th>
                     <th class="px-6 py-3 text-center">Estado</th>
                     <th class="px-6 py-3 text-center">Recibido</th>
@@ -88,8 +87,6 @@
                     </td>
                     @endif
 
-                    <td class="px-6 py-4 text-center text-slate-300">{{ $trabajo->paginas }}</td>
-
                     <td class="px-6 py-4 text-center">
                         @if($trabajo->modo_impresion === 'color')
                             <span class="bg-yellow-900 text-yellow-300 text-xs font-bold px-2 py-1 rounded-full">🎨 Color</span>
@@ -115,18 +112,37 @@
                     </td>
 
                     <td class="px-6 py-4 text-center">
-                        @if($trabajo->estado === 'pendiente')
-                            <form method="POST" action="{{ route('cola.liberar', $trabajo->id) }}">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit"
-                                        class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
-                                    Liberar
-                                </button>
-                            </form>
-                        @else
-                            <span class="text-slate-600 text-xs">—</span>
-                        @endif
+                        <div class="flex items-center justify-center gap-2">
+                          @if(auth()->user()->nivel_acceso_id === \App\Models\NivelAcceso::PREMIUM)
+                            @if($trabajo->estado === 'pendiente')
+                                <form method="POST" action="{{ route('cola.liberar', $trabajo->id) }}">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit"
+                                            class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                                        Liberar
+                                    </button>
+                                </form>
+                            @endif
+                          @endif
+
+
+                            @if($trabajo->ruta_archivo_cifrado)
+                                <a href="{{ route('trabajos.descargar', $trabajo->id) }}"
+                                   class="inline-flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/>
+                                    </svg>
+                                    Descargar
+                                </a>
+                            @endif
+
+                            @if($trabajo->estado !== 'pendiente' && !$trabajo->ruta_archivo_cifrado)
+                                <span class="text-slate-600 text-xs">—</span>
+                            @endif
+
+                        </div>
                     </td>
                 </tr>
                 @endforeach

@@ -61,19 +61,41 @@
                         class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5
                                text-white text-sm focus:outline-none focus:border-blue-500">
                     @foreach($niveles as $nivel)
-                        <option value="{{ $nivel->id }}"
-                            {{ old('nivel_acceso_id', $usuario->nivel_acceso_id) == $nivel->id ? 'selected' : '' }}>
-                            Nivel {{ $nivel->id }} — {{ $nivel->nombre }}
-                            ({{ $nivel->modo_impresion === 'color' ? '🎨 Color' : '⬛ B&N' }})
-                        </option>
+                       <option value="{{ $nivel->id }}"
+    {{ old('nivel_acceso_id', $usuario->nivel_acceso_id) == $nivel->id ? 'selected' : '' }}>
+    
+    Nivel {{ $nivel->id }} — {{ $nivel->nombre }}
+    
+    (
+    @if($nivel->nombre == 'Usuario')
+        🎨 Color / ⬛ B&N
+    @elseif($nivel->modo_impresion === 'color')
+        🎨 Color
+    @else
+        ⬛ B&N
+    @endif
+    )
+</option>
                     @endforeach
                 </select>
                 <p class="text-slate-500 text-xs mt-2">
                     Modo actual:
                     <span class="font-medium {{ $usuario->modo_impresion === 'color' ? 'text-yellow-400' : 'text-slate-300' }}">
-                        {{ $usuario->modo_impresion === 'color' ? '🎨 Color' : '⬛ Blanco y Negro' }}
+                        {{ $usuario->modo_impresion === 'color' ? '🎨 Color' : '⬛ B&N' }}
                     </span>
                 </p>
+            </div>
+             <div class="mb-6">
+                <label class="block text-sm text-slate-400 mb-2">
+                    Ruta del Modelo Facial
+                    <span class="text-slate-500 font-normal">(ruta al archivo .dat de reconocimiento)</span>
+                </label>
+                <input type="text" name="ruta_modelo_facial"
+                       value="{{ old('ruta_modelo_facial', $usuario->ruta_modelo_facial) }}"
+                       class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5
+                              text-white text-sm focus:outline-none focus:border-blue-500 font-mono
+                              @error('ruta_modelo_facial') border-red-500 @enderror"
+                       placeholder="/lib/security/howdy/models/vmg.dat">
             </div>
 
             <div class="flex gap-3">

@@ -16,9 +16,7 @@ return new class extends Migration
 
       $table->string('nombre_trabajo', 255);
 
-      $table->unsignedInteger('cups_trabajo_id')
-        ->unique()
-        ->comment('ID asignado por CUPS');
+$table->unsignedInteger('cups_trabajo_id')->nullable()->unique()->comment('ID asignado por CUPS');
 
       $table->string('ruta_archivo_cifrado', 400);
 

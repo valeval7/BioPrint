@@ -50,15 +50,6 @@
                 {{-- Separador --}}
                 <div class="w-px h-5 bg-slate-600"></div>
 
-                {{-- Badge nivel --}}
-                @php $nivel = auth()->user()->nivel_acceso_id; @endphp
-                <span class="text-xs font-bold px-2 py-1 rounded-full
-                    {{ $nivel === 1 ? 'bg-emerald-700 text-emerald-200' : '' }}
-                    {{ $nivel === 2 ? 'bg-blue-700 text-blue-200' : '' }}
-                    {{ $nivel === 3 ? 'bg-red-800 text-red-200' : '' }}">
-                    Nivel {{ $nivel }}
-                </span>
-
                 {{-- Avatar y nombre --}}
                 <div class="flex items-center gap-2 text-sm text-slate-300">
                     <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center

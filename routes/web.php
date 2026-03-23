@@ -44,7 +44,6 @@ Route::middleware('auth')->group(function () {
     Route::patch('/cola/{trabajo}/liberar', [ColaController::class, 'liberar'])->name('cola.liberar');
 });
 
-
 // Solo admin
 Route::middleware(['auth', 'solo.admin'])->group(function () {
     Route::resource('usuarios', UsuarioController::class);
@@ -52,5 +51,8 @@ Route::middleware(['auth', 'solo.admin'])->group(function () {
     Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
 });
 
-Route::get('/subir-archivo', [TrabajoImpresionController::class, 'create'])->name('trabajos.create');
-Route::post('/subir-archivo', [TrabajoImpresionController::class, 'store'])->name('trabajos.store');
+Route::middleware('auth')->group(function () {
+    Route::get('/subir-archivo', [TrabajoImpresionController::class, 'create'])->name('trabajos.create');
+    Route::post('/subir-archivo', [TrabajoImpresionController::class, 'store'])->name('trabajos.store');
+    Route::get('/trabajos/{trabajo}/descargar', [TrabajoImpresionController::class, 'descargar'])->name('trabajos.descargar');
+});

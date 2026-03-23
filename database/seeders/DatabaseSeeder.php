@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
   use WithoutModelEvents;
   public function run(): void
   {
+    $this->call(NivelAccesoSeeder::class);
     DB::table('users')->insert([
       [
         'name' => 'Admin',

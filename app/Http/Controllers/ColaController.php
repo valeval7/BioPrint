@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\TrabajoLiberado;
+
 use App\Models\TrabajoImpresion;
 use App\Models\NivelAcceso;
 use App\Models\RegistroAuditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use Pusher\Pusher;
 
 class ColaController extends Controller
 {
@@ -39,12 +39,10 @@ class ColaController extends Controller
     {
         $admin = auth()->user();
 
-        // Solo admin (PREMIUM) puede liberar
         if ($admin->nivel_acceso_id !== NivelAcceso::PREMIUM) {
             return back()->with('error', 'No tienes permiso para liberar trabajos.');
         }
 
-        // Solo trabajos pendientes
         if ($trabajo->estado !== TrabajoImpresion::PENDIENTE) {
             return back()->with('error', 'Este trabajo ya no está pendiente.');
         }
@@ -59,59 +57,67 @@ class ColaController extends Controller
             return back()->with('error', "El usuario \"{$dueno->name}\" no tiene modelo facial registrado.");
         }
 
-        $rutaArchivo = Storage::disk('local')->path($trabajo->ruta_archivo_cifrado);
+        $rutaArchivo = \Illuminate\Support\Facades\Storage::disk('local')->path($trabajo->ruta_archivo_cifrado);
         if (!file_exists($rutaArchivo)) {
             return back()->with('error', 'El archivo del trabajo no existe en el servidor.');
         }
 
-        broadcast(new TrabajoLiberado($trabajo));
+        $pusher = new Pusher(
+            config('broadcasting.connections.reverb.key'),
+            config('broadcasting.connections.reverb.secret'),
+            config('broadcasting.connections.reverb.app_id'),
+            [
+                'host'   => config('broadcasting.connections.reverb.options.host'),
+                'port'   => config('broadcasting.connections.reverb.options.port'),
+                'scheme' => config('broadcasting.connections.reverb.options.scheme'),
+                'useTLS' => false,
+            ]
+        );
 
-        Log::info("[Bioprint] Trabajo #{$trabajo->id} enviado al agente. Estado: pendiente hasta verificación facial.", [
+        $pusher->trigger('bioprint', 'trabajo.liberado', [
+            'trabajo_id'     => $trabajo->id,
+            'nombre_trabajo' => $trabajo->nombre_trabajo,
+            'modo_impresion' => $trabajo->modo_impresion,
+            'ruta_archivo'   => $rutaArchivo,
+            'modelo_facial'  => $dueno->ruta_modelo_facial,
+            'usuario_nombre' => $dueno->name,
+        ]);
+
+        Log::info("[Bioprint] Trabajo #{$trabajo->id} enviado al agente via WebSocket.", [
             'usuario'       => $dueno->name,
             'modelo_facial' => $dueno->ruta_modelo_facial,
         ]);
 
-        return back()->with('success', "Trabajo \"{$trabajo->nombre_trabajo}\" enviado al agente. El usuario debe verificar su identidad facial.");
+        return back()->with('success', "Trabajo \"{$trabajo->nombre_trabajo}\" enviado al agente. Esperando verificación facial.");
     }
 
-
-    public function resultado(Request $request, TrabajoImpresion $trabajo)
+    public function liberarDesdeAgente(Request $request, $id)
     {
-        if ($request->header('X-Bioprint-Token') !== config('bioprint.agent_token')) {
-            Log::warning("[Bioprint] Token inválido en /resultado para trabajo #{$trabajo->id}");
-            abort(403, 'Token inválido.');
-        }
+        $trabajo = TrabajoImpresion::findOrFail($id);
 
-        $request->validate([
-            'exito'   => 'required|boolean',
-            'mensaje' => 'nullable|string|max:500',
+        $trabajo->update([
+            'estado'      => TrabajoImpresion::LIBERADO,
+            'liberado_en' => now(),
         ]);
 
-        if ($request->boolean('exito')) {
-            $trabajo->update([
-                'estado'      => TrabajoImpresion::LIBERADO,
-                'liberado_en' => now(),
-            ]);
+        RegistroAuditoria::registrar(
+            RegistroAuditoria::TRABAJO_LIBERADO,
+            $trabajo->usuario_id,
+            $trabajo->id,
+            ['modo' => $trabajo->modo_impresion, 'paginas' => $trabajo->paginas]
+        );
 
-            RegistroAuditoria::registrar(
-                RegistroAuditoria::TRABAJO_LIBERADO,
-                $trabajo->usuario_id,
-                $trabajo->id,
-                [
-                    'modo'    => $trabajo->modo_impresion,
-                    'paginas' => $trabajo->paginas,
-                    'mensaje' => $request->mensaje,
-                ]
-            );
+        Log::info("[Bioprint] ✅ Trabajo #{$trabajo->id} liberado — cara verificada.");
 
-            Log::info("[Bioprint] ✅ Trabajo #{$trabajo->id} marcado como liberado — cara verificada.");
+        return response()->json(['ok' => true, 'estado' => 'liberado']);
+    }
 
-            return response()->json(['ok' => true, 'estado' => 'liberado']);
+    public function falloFacial(Request $request, $id)
+    {
+        $trabajo = TrabajoImpresion::findOrFail($id);
 
-        } else {
-            Log::warning("[Bioprint] ❌ Trabajo #{$trabajo->id} — verificación fallida: {$request->mensaje}. Sigue pendiente.");
+        Log::warning("[Bioprint] ❌ Trabajo #{$trabajo->id} — verificación facial fallida. Sigue pendiente.");
 
-            return response()->json(['ok' => true, 'estado' => 'pendiente', 'motivo' => $request->mensaje]);
-        }
+        return response()->json(['ok' => true, 'estado' => 'pendiente']);
     }
 }

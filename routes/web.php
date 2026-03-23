@@ -51,8 +51,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/confirmar-pin', [PinController::class, 'show'])->name('pin.show');
     Route::post('/confirmar-pin', [PinController::class, 'verify'])->name('pin.verify');
 });
-
 Route::middleware(['auth', 'solo.admin', 'CheckPin'])->group(function () {
+    Route::patch('usuarios/{usuario}/toggle', [UsuarioController::class, 'toggle'])
+          ->name('usuarios.toggle');
     Route::resource('usuarios', UsuarioController::class);
     Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
 });

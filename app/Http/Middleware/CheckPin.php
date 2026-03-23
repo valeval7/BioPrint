@@ -10,10 +10,12 @@ class CheckPin
 {
 public function handle(Request $request, Closure $next)
 {
-    if (!$request->session()->has('pin_confirmed')) {
+    $confirmed = $request->session()->pull('pin_confirmed');
+
+    if (!$confirmed) {
         return redirect()->route('pin.show', ['url' => $request->fullUrl()]);
     }
-
+    
     return $next($request);
 }
 }

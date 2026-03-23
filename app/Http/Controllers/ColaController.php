@@ -8,6 +8,7 @@ use App\Models\NivelAcceso;
 use App\Models\RegistroAuditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ColaController extends Controller
 {
@@ -58,7 +59,7 @@ class ColaController extends Controller
             return back()->with('error', "El usuario \"{$dueno->name}\" no tiene modelo facial registrado.");
         }
 
-        $rutaArchivo = storage_path('app/' . $trabajo->ruta_archivo_cifrado);
+        $rutaArchivo = Storage::disk('local')->path($trabajo->ruta_archivo_cifrado);
         if (!file_exists($rutaArchivo)) {
             return back()->with('error', 'El archivo del trabajo no existe en el servidor.');
         }

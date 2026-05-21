@@ -5,17 +5,19 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 
-
 class CheckPin
 {
-public function handle(Request $request, Closure $next)
-{
-    $confirmed = $request->session()->pull('pin_confirmed');
+    public function handle(Request $request, Closure $next)
+    {
+        if ($request->isMethod('get') && ($request->is('usuarios') || $request->is('auditoria'))) {
+          
+            $confirmed = $request->session()->pull('pin_confirmed');
 
-    if (!$confirmed) {
-        return redirect()->route('pin.show', ['url' => $request->fullUrl()]);
+            if (!$confirmed) {
+                return redirect()->route('pin.show', ['url' => $request->fullUrl()]);
+            }
+        }
+
+        return $next($request);
     }
-    
-    return $next($request);
-}
 }

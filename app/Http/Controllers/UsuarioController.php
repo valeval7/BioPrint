@@ -11,7 +11,7 @@ class UsuarioController extends Controller
 {
     public function index()
     {
-        $usuarios = User::with('nivelAcceso')->orderBy('nivel_acceso_id')->get();
+        $usuarios = User::with('nivelAcceso')->latest()->get();
         return view('usuarios.index', compact('usuarios'));
     }
 
@@ -24,18 +24,20 @@ class UsuarioController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'             => 'required|string|max:255',
-            'email'            => 'required|email|unique:users,email',
-            'password'         => 'required|min:8|confirmed',
-            'nivel_acceso_id'  => 'required|exists:nivel_accesos,id',
+            'name'               => 'required|string|max:255',
+            'email'              => 'required|email|unique:users,email',
+            'password'           => 'required|min:8|confirmed',
+            'nivel_acceso_id'    => 'required|exists:nivel_accesos,id',
+            'ruta_modelo_facial' => 'nullable|string|max:255',
         ]);
 
         $usuario = User::create([
-            'name'            => $request->name,
-            'email'           => $request->email,
-            'password'        => Hash::make($request->password),
-            'nivel_acceso_id' => $request->nivel_acceso_id,
-            'activo'          => true,
+            'name'               => $request->name,
+            'email'              => $request->email,
+            'password'           => Hash::make($request->password),
+            'nivel_acceso_id'    => $request->nivel_acceso_id,
+            'ruta_modelo_facial' => $request->ruta_modelo_facial,
+            'activo'             => true,
         ]);
 
         RegistroAuditoria::registrar(
@@ -58,18 +60,20 @@ class UsuarioController extends Controller
     public function update(Request $request, User $usuario)
     {
         $request->validate([
-            'name'            => 'required|string|max:255',
-            'email'           => 'required|email|unique:users,email,' . $usuario->id,
-            'nivel_acceso_id' => 'required|exists:nivel_accesos,id',
-            'password'        => 'nullable|min:8|confirmed',
+            'name'               => 'required|string|max:255',
+            'email'              => 'required|email|unique:users,email,' . $usuario->id,
+            'nivel_acceso_id'    => 'required|exists:nivel_accesos,id',
+            'password'           => 'nullable|min:8|confirmed',
+            'ruta_modelo_facial' => 'nullable|string|max:255',
         ]);
 
         $nivelAnterior = $usuario->nivel_acceso_id;
 
         $usuario->fill([
-            'name'            => $request->name,
-            'email'           => $request->email,
-            'nivel_acceso_id' => $request->nivel_acceso_id,
+            'name'               => $request->name,
+            'email'              => $request->email,
+            'nivel_acceso_id'    => $request->nivel_acceso_id,
+            'ruta_modelo_facial' => $request->ruta_modelo_facial,
         ]);
 
         if ($request->filled('password')) {
@@ -78,7 +82,7 @@ class UsuarioController extends Controller
 
         $usuario->save();
 
-        if ($nivelAnterior !== (int) $request->nivel_acceso_id) {
+        if ((int)$nivelAnterior !== (int)$request->nivel_acceso_id) {
             RegistroAuditoria::registrar(
                 RegistroAuditoria::CAMBIO_ACL,
                 auth()->id(),
